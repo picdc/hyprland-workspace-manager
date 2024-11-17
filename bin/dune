@@ -1,0 +1,5 @@
+(executable
+ (public_name hyprland_monitor_conf)
+ (name main)
+ (libraries eio eio_main eio.unix re ezjsonm)
+)
