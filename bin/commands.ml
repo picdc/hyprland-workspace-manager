@@ -1,7 +1,11 @@
 let socket_name = ".socket.sock"
 
 type monitor = { id : int; name : string; desc : string }
-type _ command = Monitors : monitor list command
+type workspace = Wksp of int
+
+type _ command =
+  | Monitors : monitor list command
+  | Workspaces : workspace list command
 
 module Option_syntax = struct
   let ( let* ) x f = Option.bind x f
@@ -28,6 +32,17 @@ let parse_monitors = function
   | `A monitors -> Some (List.filter_map parse_monitor monitors)
   | _ -> None
 
+let parse_workspace json =
+  let open Option_syntax in
+  let* id = Json.get_field json [ "id" ] Ezjsonm.get_int in
+  Some (Wksp id)
+
+let pp_workspace ppf (Wksp id) = Format.pp_print_int ppf id
+
+let parse_workspaces = function
+  | `A workspace -> Some (List.filter_map parse_workspace workspace)
+  | _ -> None
+
 let send_command_raw :
     type cmd_res.
     sw:_ -> env:_ -> command:cmd_res command -> _ -> cmd_res option =
@@ -36,15 +51,26 @@ let send_command_raw :
   | Monitors -> (
       (* Eio.traceln "Socket: %a" (Eio.Net.getaddrinfo_stream socket); *)
       try
-        Eio.Flow.write dispatch_socket [ Cstruct.of_string "j/monitors" ];
-        Eio.Flow.shutdown dispatch_socket `Send;
-        let buf = Eio.Buf_read.of_flow ~max_size:max_int dispatch_socket in
-        let rsp = Eio.Buf_read.take_all buf in
-        let monitors = parse_monitors (Ezjsonm.from_string rsp) in
+        let monitors =
+          Socket.request_json dispatch_socket "j/monitors" parse_monitors
+        in
         Eio.traceln "Monitors: [%a]"
-          (Format.pp_print_option (Format.pp_print_list pp_monitor))
+          (Format.pp_print_option
+             (Format.pp_print_list ~pp_sep:Format.pp_print_space pp_monitor))
           monitors;
         monitors
+      with _exn -> None)
+  | Workspaces -> (
+      (* Eio.traceln "Socket: %a" (Eio.Net.getaddrinfo_stream socket); *)
+      try
+        let workspaces =
+          Socket.request_json dispatch_socket "j/workspaces" parse_workspaces
+        in
+        Eio.traceln "Workspaces: [%a]"
+          (Format.pp_print_option
+             (Format.pp_print_list ~pp_sep:Format.pp_print_space pp_workspace))
+          workspaces;
+        workspaces
       with _exn -> None)
 
 let send_command :

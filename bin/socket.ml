@@ -14,3 +14,19 @@ let with_connection ~sw ~env socket_name k =
   let res = k ~sw ~env socket in
   Eio.Net.close socket;
   res
+
+let send socket msg =
+  Eio.Flow.write socket [ Cstruct.of_string msg ];
+  Eio.Flow.shutdown socket `Send
+
+let receive socket =
+  let buf = Eio.Buf_read.of_flow ~max_size:max_int socket in
+  Eio.Buf_read.take_all buf
+
+let request socket msg k =
+  send socket msg;
+  let rsp = receive socket in
+  k rsp
+
+let request_json socket msg k =
+  request socket msg (fun rsp -> k (Ezjsonm.from_string rsp))
