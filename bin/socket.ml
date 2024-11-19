@@ -21,7 +21,9 @@ let send socket msg =
 
 let receive socket =
   let buf = Eio.Buf_read.of_flow ~max_size:max_int socket in
-  Eio.Buf_read.take_all buf
+  let res = Eio.Buf_read.take_all buf in
+  Eio.Flow.shutdown socket `Receive;
+  res
 
 let request socket msg k =
   send socket msg;
