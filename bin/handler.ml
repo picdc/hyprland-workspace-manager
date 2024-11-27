@@ -1,5 +1,5 @@
 let dispatch_workspaces ?ev ~sw ~env ~interactive () =
-  let open Commands.Option_syntax in
+  let open Utils.Option_syntax in
   (* This is for debug only *)
   Option.iter
     (fun ev ->

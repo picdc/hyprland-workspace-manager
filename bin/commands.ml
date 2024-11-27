@@ -1,3 +1,5 @@
+open Utils
+
 let socket_name = ".socket.sock"
 
 type monitor = { id : int; name : string; desc : string }
@@ -9,17 +11,6 @@ type _ command =
   | Workspaces : workspace list command
   | MoveWorkspaceToMonitor : move_workspace -> bool command
 (* | Seq : 'a command * 'b command -> ('a * 'b) command *)
-
-module Option_syntax = struct
-  let ( let* ) x f = Option.bind x f
-end
-
-module Json = struct
-  let get_field json path transform =
-    let open Option_syntax in
-    let* value = Ezjsonm.find_opt json path in
-    try Some (transform value) with _ -> None
-end
 
 let pp_monitor ppf { id; name; desc } =
   Format.fprintf ppf "{ id: %d; name: %s; desc: %s }" id name desc
