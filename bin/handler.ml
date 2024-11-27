@@ -1,4 +1,4 @@
-let dispatch_workspaces ?ev ~sw ~env ~interactive:_ () =
+let dispatch_workspaces ?ev ~sw ~env ~interactive () =
   let open Commands.Option_syntax in
   (* This is for debug only *)
   Option.iter
@@ -14,7 +14,7 @@ let dispatch_workspaces ?ev ~sw ~env ~interactive:_ () =
   in
   let* monitors = monitors in
   let* workspaces = workspaces in
-  let workspaces = Layout.assign monitors workspaces in
+  let workspaces = Layout.assign ~env ~interactive monitors workspaces in
   let commands =
     List.filter_map
       (fun assignment ->
