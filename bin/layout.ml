@@ -46,9 +46,6 @@ let interactive_select_monitors monitors ~env =
     read_monitor stdout stdin Secondary monitors
     |> Option.value ~default:primary
   in
-  Eio.Flow.copy_string
-    (Format.sprintf "Selected: (%d, %d)\n" primary.id secondary.id)
-    stdout;
   (primary, secondary)
 
 let assign ~env ~interactive monitors workspaces =

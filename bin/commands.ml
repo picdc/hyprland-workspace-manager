@@ -90,10 +90,8 @@ let send_command_raw :
  fun ~sw:_ ~env:_ ~command dispatch_socket ->
   let open Option_syntax in
   let dispatch, parse = prepare_command command in
-  Eio.traceln "Dispatch: %s" dispatch;
   try
     let* result = Socket.request dispatch_socket dispatch parse in
-    Eio.traceln "Result: [%a]" pp_command (command, result);
     Some result
   with _exn -> None
 
