@@ -10,23 +10,57 @@ let daemon ~sw ~env event_socket =
     | None -> ()
   done
 
-module Daemon = struct
-  let handler ~sw ~env () =
+module type CMD_DESC = sig
+  type options
+
+  val options : options Term.t
+
+  val handler :
+    sw:Eio.Switch.t -> env:Eio_unix.Stdenv.base -> options -> unit -> unit
+
+  val name : string
+end
+
+module type CMD = sig
+  val cmd : sw:Eio.Switch.t -> env:Eio_unix.Stdenv.base -> unit Cmd.t
+end
+
+module CmdMaker (Command : CMD_DESC) = struct
+  let term ~sw ~env =
+    Term.(const (Command.handler ~sw ~env) $ Command.options $ const ())
+
+  let cmd ~sw ~env = Cmd.v (Cmd.info Command.name) (term ~sw ~env)
+end
+
+module Daemon = CmdMaker (struct
+  type options = unit
+
+  let options = Term.const ()
+
+  let handler ~sw ~env () () =
     Socket.with_connection ~sw ~env Event.socket_name daemon
 
-  let term ~sw ~env = Term.(const (handler ~sw ~env) $ const ())
-  let cmd ~sw ~env = Cmd.v (Cmd.info "daemon") (term ~sw ~env)
-end
+  let name = "daemon"
+end)
 
-module Dispatch = struct
-  let handler ~sw ~env () = Handler.dispatch_workspaces ~sw ~env () |> ignore
-  let term ~sw ~env = Term.(const (handler ~sw ~env) $ const ())
-  let cmd ~sw ~env = Cmd.v (Cmd.info "dispatch") (term ~sw ~env)
-end
+module Dispatch = CmdMaker (struct
+  type options = { interactive : bool }
+
+  let interactive_flag = Arg.(value & flag & info [ "i"; "interactive" ])
+  let options = Term.(map (fun interactive -> { interactive }) interactive_flag)
+
+  let handler ~sw ~env options () =
+    Handler.dispatch_workspaces ~sw ~env ~interactive:options.interactive ()
+    |> ignore
+
+  let name = "dispatch"
+end)
+
+let commands : (module CMD) list = [ (module Daemon); (module Dispatch) ]
 
 let commands ~sw ~env =
   Cmdliner.Cmd.group (Cmd.info "")
-    [ Daemon.cmd ~sw ~env; Dispatch.cmd ~sw ~env ]
+  @@ List.map (fun (module CMD : CMD) -> CMD.cmd ~sw ~env) commands
 
 let () =
   Eio_main.run @@ fun env ->

@@ -1,4 +1,4 @@
-let dispatch_workspaces ?ev ~sw ~env () =
+let dispatch_workspaces ?ev ~sw ~env ~interactive:_ () =
   let open Commands.Option_syntax in
   (* This is for debug only *)
   Option.iter
@@ -31,7 +31,8 @@ let dispatch_workspaces ?ev ~sw ~env () =
   let () = Eio.Fiber.all commands in
   Some ()
 
-let on_monitor_change ?ev sw env = dispatch_workspaces ~sw ~env ?ev ()
+let on_monitor_change ?ev sw env =
+  dispatch_workspaces ~sw ~env ?ev ~interactive:false ()
 
 let on_event sw env ev =
   match ev.Event.event with
