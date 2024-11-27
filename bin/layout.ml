@@ -49,17 +49,18 @@ let interactive_select_monitors monitors ~env =
   Eio.Flow.copy_string
     (Format.sprintf "Selected: (%d, %d)\n" primary.id secondary.id)
     stdout;
-  ()
+  (primary, secondary)
 
 let assign ~env ~interactive monitors workspaces =
   let m1, m2 =
-    if interactive then interactive_select_monitors monitors ~env;
-    match
-      List.sort (fun m1 m2 -> Int.compare m1.Commands.id m2.id) monitors
-    with
-    | [] -> failwith "No monitor found"
-    | m :: [] -> (m, m)
-    | m1 :: m2 :: _ -> (m1, m2)
+    if interactive then interactive_select_monitors monitors ~env
+    else
+      match
+        List.sort (fun m1 m2 -> Int.compare m1.Commands.id m2.id) monitors
+      with
+      | [] -> failwith "No monitor found"
+      | m :: [] -> (m, m)
+      | m1 :: m2 :: _ -> (m1, m2)
   in
   List.init 9 (fun id ->
       let id = id + 1 in
@@ -68,5 +69,18 @@ let assign ~env ~interactive monitors workspaces =
       { id = Commands.Wksp id; monitor; active })
 
 let to_conf_line workspace =
-  Format.printf "workspace = %a, monitor:%s" Commands.pp_workspace workspace.id
-    workspace.monitor.name
+  Format.asprintf "workspace = %a, monitor:desc:%s\n" Commands.pp_workspace
+    workspace.id workspace.monitor.desc
+
+let to_conf_file ~env assignments =
+  let home = Sys.getenv "HOME" in
+  let path =
+    Eio.Path.(env#fs / home / ".config" / "hypr" / "workspace_manager.conf")
+  in
+  Eio.Path.with_open_out ~append:false ~create:(`Or_truncate 0o644) path
+    (fun file ->
+      List.iter
+        (fun assignment ->
+          let line = to_conf_line assignment in
+          Eio.Flow.write file [ Cstruct.of_string line ])
+        assignments)

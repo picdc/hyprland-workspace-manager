@@ -28,6 +28,7 @@ let dispatch_workspaces ?ev ~sw ~env ~interactive () =
         else None)
       workspaces
   in
+  Layout.to_conf_file ~env workspaces;
   let () = Eio.Fiber.all commands in
   Some ()
 
