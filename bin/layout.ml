@@ -4,14 +4,59 @@ open Resources
 type workspace = { id : Workspace.t; monitor : Monitor.t; active : bool }
 type monitor_kind = Primary | Secondary
 
-let pp_monitor_kind ppf = function
-  | Primary -> Format.fprintf ppf "primary"
-  | Secondary -> Format.fprintf ppf "secondary"
+let monitor_kind_to_string = function
+  | Primary -> "primary"
+  | Secondary -> "secondary"
+
+let pp_monitor_kind ppf kind =
+  Format.fprintf ppf "%s" @@ monitor_kind_to_string kind
 
 let monitor_kind_of_string = function
   | "primary" -> Some Primary
   | "secondary" -> Some Secondary
   | _ -> None
+
+module Configuration = struct
+  type assignment = monitor_kind * Workspace.t list
+
+  let encode_assigment (kind, workpaces) =
+    `O
+      [
+        ("monitor", `String (monitor_kind_to_string kind));
+        ( "workpaces",
+          `A
+            (List.map
+               (fun (Workspace.Wksp i) -> `Float (float_of_int i))
+               workpaces) );
+      ]
+
+  let decode_assignment json =
+    let open Option_syntax in
+    let* monitor_json = Json.get_field json [ "monitor" ] Ezjsonm.get_string in
+    let* monitor = monitor_kind_of_string monitor_json in
+    let* workspaces =
+      Json.get_field json [ "workspaces" ] Ezjsonm.(get_list get_int)
+    in
+    Some (monitor, List.map (fun i -> Workspace.Wksp i) workspaces)
+
+  type layout = assignment list
+
+  let encode_layout l = `O [ ("layout", `A (List.map encode_assigment l)) ]
+
+  let decode_layout json =
+    let open Option_syntax in
+    let decode_assignments json =
+      List.fold_left
+        (fun assignments assignment ->
+          let* assignment = assignment in
+          let* assignments = assignments in
+          Some (assignment :: assignments))
+        (Some [])
+      @@ Ezjsonm.get_list decode_assignment json
+    in
+    let* assigments = Json.get_field json [ "layout" ] decode_assignments in
+    assigments
+end
 
 let read_monitor stdout stdin kind monitors =
   let find_monitor i = List.find_opt (fun m -> m.Monitor.id = i) monitors in
