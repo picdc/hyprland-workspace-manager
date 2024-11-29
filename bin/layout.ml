@@ -1,11 +1,7 @@
 open Utils
+open Resources
 
-type workspace = {
-  id : Commands.workspace;
-  monitor : Commands.monitor;
-  active : bool;
-}
-
+type workspace = { id : Workspace.t; monitor : Monitor.t; active : bool }
 type monitor_kind = Primary | Secondary
 
 let pp_monitor_kind ppf = function
@@ -18,7 +14,7 @@ let monitor_kind_of_string = function
   | _ -> None
 
 let read_monitor stdout stdin kind monitors =
-  let find_monitor i = List.find_opt (fun m -> m.Commands.id = i) monitors in
+  let find_monitor i = List.find_opt (fun m -> m.Monitor.id = i) monitors in
   Eio_format.printf stdout "Please select %a monitor (by ID%s): "
     pp_monitor_kind kind
     (if kind = Secondary then " or `none` to use primary only" else "");
@@ -35,7 +31,7 @@ let read_monitor stdout stdin kind monitors =
 let interactive_select_monitors monitors ~env =
   let stdout = Eio.Stdenv.stdout env in
   let stdin = Eio.Stdenv.stdin env in
-  Eio_format.printf stdout "Monitors: %a\n" Commands.pp_monitors monitors;
+  Eio_format.printf stdout "Monitors: %a\n" Monitor.pp_list monitors;
   let primary =
     match read_monitor stdout stdin Primary monitors with
     | None -> assert false
@@ -52,7 +48,7 @@ let assign ~env ~interactive monitors workspaces =
     if interactive then interactive_select_monitors monitors ~env
     else
       match
-        List.sort (fun m1 m2 -> Int.compare m1.Commands.id m2.id) monitors
+        List.sort (fun m1 m2 -> Int.compare m1.Monitor.id m2.id) monitors
       with
       | [] -> failwith "No monitor found"
       | m :: [] -> (m, m)
@@ -61,12 +57,12 @@ let assign ~env ~interactive monitors workspaces =
   List.init 9 (fun id ->
       let id = id + 1 in
       let monitor = if id mod 2 <> 0 then secondary else primary in
-      let active = List.mem (Commands.Wksp id) workspaces in
-      { id = Commands.Wksp id; monitor; active })
+      let active = List.mem (Workspace.Wksp id) workspaces in
+      { id = Workspace.Wksp id; monitor; active })
 
 let to_conf_line workspace =
-  Format.asprintf "workspace = %a, monitor:desc:%s\n" Commands.pp_workspace
-    workspace.id workspace.monitor.desc
+  Format.asprintf "workspace = %a, monitor:desc:%s\n" Workspace.pp workspace.id
+    workspace.monitor.desc
 
 let to_conf_file ~env assignments =
   let home = Sys.getenv "HOME" in

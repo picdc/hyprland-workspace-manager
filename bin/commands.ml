@@ -1,53 +1,22 @@
 open Utils
+open Resources
 
 let socket_name = ".socket.sock"
 
-type monitor = { id : int; name : string; desc : string }
-type workspace = Wksp of int
-type move_workspace = { workspace : workspace; monitor : monitor }
+type move_workspace = { workspace : Workspace.t; monitor : Monitor.t }
 
 type _ command =
-  | Monitors : monitor list command
-  | Workspaces : workspace list command
+  | Monitors : Monitor.t list command
+  | Workspaces : Workspace.t list command
   | MoveWorkspaceToMonitor : move_workspace -> bool command
 (* | Seq : 'a command * 'b command -> ('a * 'b) command *)
 
-let pp_monitor ppf { id; name; desc } =
-  Format.fprintf ppf "{ id: %d; name: %s; desc: %s }" id name desc
-
-let pp_monitors = Format.pp_print_list ~pp_sep:Format.pp_print_space pp_monitor
-
-let parse_monitor json =
-  let open Option_syntax in
-  let* id = Json.get_field json [ "id" ] Ezjsonm.get_int in
-  let* name = Json.get_field json [ "name" ] Ezjsonm.get_string in
-  let* desc = Json.get_field json [ "description" ] Ezjsonm.get_string in
-  Some { id; name; desc }
-
-let parse_monitors = function
-  | `A monitors -> Some (List.filter_map parse_monitor monitors)
-  | _ -> None
-
-let pp_workspace ppf (Wksp id) = Format.pp_print_int ppf id
-
-let pp_workspaces =
-  Format.pp_print_list ~pp_sep:Format.pp_print_space pp_workspace
-
-let parse_workspace json =
-  let open Option_syntax in
-  let* id = Json.get_field json [ "id" ] Ezjsonm.get_int in
-  Some (Wksp id)
-
-let parse_workspaces = function
-  | `A workspace -> Some (List.filter_map parse_workspace workspace)
-  | _ -> None
-
 let pp_command : type t. _ -> t command * t -> unit =
  fun ppf -> function
-  | Monitors, monitors -> pp_monitors ppf monitors
-  | Workspaces, workspaces -> pp_workspaces ppf workspaces
+  | Monitors, monitors -> Monitor.pp_list ppf monitors
+  | Workspaces, workspaces -> Workspace.pp_list ppf workspaces
   | MoveWorkspaceToMonitor { workspace; monitor }, b ->
-      Format.fprintf ppf "Move %a to %a: %b" pp_workspace workspace pp_monitor
+      Format.fprintf ppf "Move %a to %a: %b" Workspace.pp workspace Monitor.pp
         monitor b
 (* | Seq (c1, c2), (res1, res2) -> *)
 (*     Format.fprintf ppf "%a; %a" pp_command (c1, res1) pp_command (c2, res2) *)
@@ -58,8 +27,8 @@ let as_json k v = k (Ezjsonm.from_string v)
 
 let prepare_command : type res. res command -> string * (string -> res option) =
   function
-  | Monitors -> ("j/monitors", as_json parse_monitors)
-  | Workspaces -> ("j/workspaces", as_json parse_workspaces)
+  | Monitors -> ("j/monitors", as_json Monitor.parse_array)
+  | Workspaces -> ("j/workspaces", as_json Workspace.parse_array)
   | MoveWorkspaceToMonitor { workspace = Wksp id; monitor; _ } ->
       ( Format.sprintf "j/dispatch moveworkspacetomonitor %d %s" id monitor.name,
         fun r -> Some (r = "ok") )
