@@ -1,4 +1,4 @@
-let dispatch_workspaces ~sw ~env ~interactive () =
+let dispatch_workspaces ~sw ~env ~interactive ~overwrite () =
   let open Utils.Option_syntax in
   let monitors, workspaces =
     Eio.Fiber.pair
@@ -21,12 +21,12 @@ let dispatch_workspaces ~sw ~env ~interactive () =
         else None)
       workspaces
   in
-  Layout.to_conf_file ~env workspaces;
+  if overwrite then Layout.to_conf_file ~env workspaces;
   let () = Eio.Fiber.all commands in
   Some ()
 
 let on_monitor_change sw env =
-  dispatch_workspaces ~sw ~env ~interactive:false ()
+  dispatch_workspaces ~sw ~env ~interactive:false ~overwrite:true ()
 
 let on_event sw env ev =
   match ev.Event.event with

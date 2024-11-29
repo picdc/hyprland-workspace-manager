@@ -44,13 +44,19 @@ module Daemon = CmdMaker (struct
 end)
 
 module Dispatch = CmdMaker (struct
-  type options = { interactive : bool }
+  type options = { interactive : bool; overwrite : bool }
 
   let interactive_flag = Arg.(value & flag & info [ "i"; "interactive" ])
-  let options = Term.(map (fun interactive -> { interactive }) interactive_flag)
+  let overwrite_flag = Arg.(value & flag & info [ "w"; "overwrite" ])
+
+  let options =
+    Term.(
+      map (fun (interactive, overwrite) -> { interactive; overwrite })
+      @@ product interactive_flag overwrite_flag)
 
   let handler ~sw ~env options () =
-    Handler.dispatch_workspaces ~sw ~env ~interactive:options.interactive ()
+    Handler.dispatch_workspaces ~sw ~env ~interactive:options.interactive
+      ~overwrite:options.overwrite ()
     |> ignore
 
   let name = "dispatch"
