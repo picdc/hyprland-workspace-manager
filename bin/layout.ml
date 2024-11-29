@@ -56,6 +56,12 @@ module Configuration = struct
     in
     let* assigments = Json.get_field json [ "layout" ] decode_assignments in
     assigments
+
+  let default =
+    [
+      (Primary, [ Workspace.Wksp 2; Wksp 4; Wksp 6; Wksp 8 ]);
+      (Secondary, [ Wksp 1; Wksp 3; Wksp 5; Wksp 7; Wksp 9 ]);
+    ]
 end
 
 let read_monitor stdout stdin kind monitors =
@@ -88,7 +94,7 @@ let interactive_select_monitors monitors ~env =
   in
   (primary, secondary)
 
-let assign ~env ~interactive monitors workspaces =
+let assign ~env ~interactive monitors current_workspaces layout =
   let primary, secondary =
     if interactive then interactive_select_monitors monitors ~env
     else
@@ -99,11 +105,17 @@ let assign ~env ~interactive monitors workspaces =
       | m :: [] -> (m, m)
       | m1 :: m2 :: _ -> (m1, m2)
   in
-  List.init 9 (fun id ->
-      let id = id + 1 in
-      let monitor = if id mod 2 <> 0 then secondary else primary in
-      let active = List.mem (Workspace.Wksp id) workspaces in
-      { id = Workspace.Wksp id; monitor; active })
+  List.fold_left
+    (fun workspaces (monitor, wksp_ids) ->
+      let monitor =
+        match monitor with Primary -> primary | Secondary -> secondary
+      in
+      List.fold_left
+        (fun workspaces (Workspace.Wksp id) ->
+          let active = List.mem (Workspace.Wksp id) current_workspaces in
+          { id = Workspace.Wksp id; monitor; active } :: workspaces)
+        workspaces wksp_ids)
+    [] layout
 
 let to_conf_line workspace =
   Format.asprintf "workspace = %a, monitor:desc:%s\n" Workspace.pp workspace.id

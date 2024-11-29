@@ -7,7 +7,10 @@ let dispatch_workspaces ~sw ~env ~interactive ~overwrite () =
   in
   let* monitors = monitors in
   let* workspaces = workspaces in
-  let workspaces = Layout.assign ~env ~interactive monitors workspaces in
+  let workspaces =
+    Layout.assign ~env ~interactive monitors workspaces
+      Layout.Configuration.default
+  in
   let commands =
     List.filter_map
       (fun assignment ->
