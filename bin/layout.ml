@@ -49,7 +49,7 @@ let interactive_select_monitors monitors ~env =
   (primary, secondary)
 
 let assign ~env ~interactive monitors workspaces =
-  let m1, m2 =
+  let primary, secondary =
     if interactive then interactive_select_monitors monitors ~env
     else
       match
@@ -61,7 +61,7 @@ let assign ~env ~interactive monitors workspaces =
   in
   List.init 9 (fun id ->
       let id = id + 1 in
-      let monitor = if id mod 2 = 0 then m2 else m1 in
+      let monitor = if id mod 2 <> 0 then secondary else primary in
       let active = List.mem (Commands.Wksp id) workspaces in
       { id = Commands.Wksp id; monitor; active })
 
