@@ -1,3 +1,5 @@
+open Utils
+
 type workspace = {
   id : Commands.workspace;
   monitor : Commands.monitor;
@@ -17,10 +19,9 @@ let monitor_kind_of_string = function
 
 let read_monitor stdout stdin kind monitors =
   let find_monitor i = List.find_opt (fun m -> m.Commands.id = i) monitors in
-  Eio.Flow.copy_string
-    (Format.asprintf "Please select %a monitor (by ID%s): " pp_monitor_kind kind
-       (if kind = Secondary then " or `none` to use primary only" else ""))
-    stdout;
+  Eio_format.printf stdout "Please select %a monitor (by ID%s): "
+    pp_monitor_kind kind
+    (if kind = Secondary then " or `none` to use primary only" else "");
   let selection = Eio.Buf_read.(of_flow stdin ~max_size:max_int |> line) in
   if selection = "none" && kind = Secondary then None
   else
@@ -34,9 +35,7 @@ let read_monitor stdout stdin kind monitors =
 let interactive_select_monitors monitors ~env =
   let stdout = Eio.Stdenv.stdout env in
   let stdin = Eio.Stdenv.stdin env in
-  Eio.Flow.copy_string
-    (Format.asprintf "Monitors: %a\n" Commands.pp_monitors monitors)
-    stdout;
+  Eio_format.printf stdout "Monitors: %a\n" Commands.pp_monitors monitors;
   let primary =
     match read_monitor stdout stdin Primary monitors with
     | None -> assert false
