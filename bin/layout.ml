@@ -16,6 +16,7 @@ let monitor_kind_of_string = function
   | "secondary" -> Some Secondary
   | _ -> None
 
+(* TODO: handle the errors, for now this is... unsatisfying. *)
 module Configuration = struct
   type assignment = monitor_kind * Workspace.t list
 
@@ -41,27 +42,63 @@ module Configuration = struct
 
   type layout = assignment list
 
-  let encode_layout l = `O [ ("layout", `A (List.map encode_assigment l)) ]
+  let encode_layout l = `A (List.map encode_assigment l)
 
   let decode_layout json =
     let open Option_syntax in
-    let decode_assignments json =
-      List.fold_left
-        (fun assignments assignment ->
-          let* assignment = assignment in
-          let* assignments = assignments in
-          Some (assignment :: assignments))
-        (Some [])
-      @@ Ezjsonm.get_list decode_assignment json
-    in
-    let* assigments = Json.get_field json [ "layout" ] decode_assignments in
-    assigments
+    List.fold_left
+      (fun assignments assignment ->
+        let* assignment = assignment in
+        let* assignments = assignments in
+        Some (assignment :: assignments))
+      (Some [])
+    @@ Ezjsonm.get_list decode_assignment json
 
-  let default =
+  let default_layout =
     [
       (Primary, [ Workspace.Wksp 2; Wksp 4; Wksp 6; Wksp 8 ]);
       (Secondary, [ Wksp 1; Wksp 3; Wksp 5; Wksp 7; Wksp 9 ]);
     ]
+
+  type monitor_whitelist = Monitor.desc list
+
+  let encode_monitor_whitelist l = Ezjsonm.strings l
+  let decode_monitor_whitelist json = Ezjsonm.get_strings json
+
+  type t = {
+    primary_monitors : monitor_whitelist;
+    secondary_monitors : monitor_whitelist;
+    layout : layout;
+  }
+
+  let encode conf =
+    `O
+      [
+        ( monitor_kind_to_string Primary,
+          encode_monitor_whitelist conf.primary_monitors );
+        ( monitor_kind_to_string Secondary,
+          encode_monitor_whitelist conf.secondary_monitors );
+        ("layout", `A (List.map encode_assigment conf.layout));
+      ]
+
+  let decode json =
+    let open Option_syntax in
+    let* primary_monitors =
+      Json.get_field json
+        [ monitor_kind_to_string Primary ]
+        decode_monitor_whitelist
+    in
+    let* secondary_monitors =
+      Json.get_field json
+        [ monitor_kind_to_string Secondary ]
+        decode_monitor_whitelist
+    in
+    let* layout = Json.get_field json [ "layout" ] decode_layout in
+    let* layout = layout in
+    Some { primary_monitors; secondary_monitors; layout }
+
+  let default =
+    { primary_monitors = []; secondary_monitors = []; layout = default_layout }
 end
 
 let read_monitor stdout stdin kind monitors =
@@ -94,16 +131,36 @@ let interactive_select_monitors monitors ~env =
   in
   (primary, secondary)
 
-let assign ~env ~interactive monitors current_workspaces layout =
+let select_monitors monitors conf =
+  let open Option_syntax in
+  let rec select whitelisted =
+    match whitelisted with
+    | [] -> None
+    | m :: rem -> (
+        match List.find_opt (fun m' -> m'.Monitor.desc = m) monitors with
+        | Some m -> Some m
+        | None -> select rem)
+  in
+  let* primary = select conf.Configuration.primary_monitors in
+  let secondary =
+    select (List.filter (fun m -> m <> primary.desc) conf.secondary_monitors)
+    |> Option.value ~default:primary
+  in
+  Some (primary, secondary)
+
+let select_arbitrary_monitors monitors =
+  match List.sort (fun m1 m2 -> Int.compare m1.Monitor.id m2.id) monitors with
+  | [] -> failwith "No monitor found"
+  | m :: [] -> (m, m)
+  | m1 :: m2 :: _ -> (m1, m2)
+
+let assign ~env ~interactive monitors current_workspaces configuration =
   let primary, secondary =
     if interactive then interactive_select_monitors monitors ~env
     else
-      match
-        List.sort (fun m1 m2 -> Int.compare m1.Monitor.id m2.id) monitors
-      with
-      | [] -> failwith "No monitor found"
-      | m :: [] -> (m, m)
-      | m1 :: m2 :: _ -> (m1, m2)
+      match select_monitors monitors configuration with
+      | None -> select_arbitrary_monitors monitors
+      | Some res -> res
   in
   List.fold_left
     (fun workspaces (monitor, wksp_ids) ->
@@ -115,7 +172,7 @@ let assign ~env ~interactive monitors current_workspaces layout =
           let active = List.mem (Workspace.Wksp id) current_workspaces in
           { id = Workspace.Wksp id; monitor; active } :: workspaces)
         workspaces wksp_ids)
-    [] layout
+    [] configuration.layout
 
 let to_conf_line workspace =
   Format.asprintf "workspace = %a, monitor:desc:%s\n" Workspace.pp workspace.id

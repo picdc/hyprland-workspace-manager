@@ -1,7 +1,8 @@
 open Utils
 
 module Monitor = struct
-  type t = { id : int; name : string; desc : string }
+  type desc = string
+  type t = { id : int; name : string; desc : desc }
 
   let pp ppf { id; name; desc } =
     Format.fprintf ppf "{ id: %d; name: %s; desc: %s }" id name desc

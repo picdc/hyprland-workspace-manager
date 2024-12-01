@@ -31,6 +31,4 @@ let request socket msg k =
   k rsp
 
 let request_json socket msg k =
-  request socket msg (fun rsp ->
-      Format.printf "Response: %s" rsp;
-      k (Ezjsonm.from_string rsp))
+  request socket msg (fun rsp -> k (Ezjsonm.from_string rsp))
