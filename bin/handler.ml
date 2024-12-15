@@ -8,7 +8,7 @@ let dispatch_workspaces ~env ~interactive ~overwrite () =
   let* monitors = monitors in
   let* workspaces = workspaces in
   let configuration =
-    Layout.Configuration.read_or_default
+    Layout.Configuration.read_or_default env
       (Resources.Unix_env.configuration env.env)
   in
   let workspaces =
@@ -32,6 +32,7 @@ let dispatch_workspaces ~env ~interactive ~overwrite () =
   Some ()
 
 let on_monitor_change env =
+  Logs.pp_logs env Debug "on monitor change";
   dispatch_workspaces ~env ~interactive:false ~overwrite:true ()
 
 let on_event env ev =

@@ -100,12 +100,15 @@ module Configuration = struct
   let default =
     { primary_monitors = []; secondary_monitors = []; layout = default_layout }
 
-  let read_or_default path =
+  let read_or_default env path =
     let result =
       try
         let file = Eio.Path.with_open_in path Eio.Flow.read_all in
         Ezjsonm.from_string file |> decode
-      with _ -> None
+      with _ ->
+        Logs.pp_logs env Error "Couldn't read layout file at %a\n%!" Eio.Path.pp
+          path;
+        None
     in
     Option.value ~default result
 end
@@ -170,14 +173,18 @@ let assign ~env ~interactive monitors current_workspaces configuration =
       | None -> select_arbitrary_monitors monitors
       | Some res -> res
   in
+  Logs.pp_logs env Debug "Primary monitor: %a, secondary monitor: %a\n%!"
+    Monitor.pp primary Monitor.pp secondary;
   List.fold_left
     (fun workspaces (monitor, wksp_ids) ->
       let monitor =
         match monitor with Primary -> primary | Secondary -> secondary
       in
       List.fold_left
-        (fun workspaces (Workspace.Wksp id) ->
+        (fun workspaces (Workspace.Wksp id as wksp) ->
           let active = List.mem (Workspace.Wksp id) current_workspaces in
+          Logs.pp_logs env Debug "Assigning workspace %a to monitor %a\n%!"
+            Workspace.pp wksp Monitor.pp monitor;
           { id = Workspace.Wksp id; monitor; active } :: workspaces)
         workspaces wksp_ids)
     [] configuration.layout
@@ -190,6 +197,7 @@ let to_conf_file ~env assignments =
   let path = Resources.Unix_env.workspaces_configuration env.Env.env in
   Eio.Path.with_open_out ~append:false ~create:(`Or_truncate 0o644) path
     (fun file ->
+      Logs.pp_logs env Debug "Writing configuration to %a\n%!" Eio.Path.pp path;
       List.iter
         (fun assignment ->
           let line = to_conf_line assignment in

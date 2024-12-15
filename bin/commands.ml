@@ -30,11 +30,13 @@ let prepare_command : type res. res command -> string * (string -> res option) =
 
 let send_command_raw :
     type cmd_res. env:Env.t -> command:cmd_res command -> _ -> cmd_res option =
- fun ~env:_ ~command dispatch_socket ->
+ fun ~env ~command dispatch_socket ->
   let open Option_syntax in
   let dispatch, parse = prepare_command command in
+  Logs.pp_logs env Debug "Sending command: [%s]\n%!" dispatch;
   try
     let* result = Socket.request dispatch_socket dispatch parse in
+    Logs.pp_logs env Debug "Result: %a\n%!" pp_command (command, result);
     Some result
   with _exn -> None
 
