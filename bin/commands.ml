@@ -33,7 +33,7 @@ let send_command_raw :
   let dispatch, parse = prepare_command command in
   Logs.pp_logs env Debug "Sending command: [%s]\n%!" dispatch;
   try
-    let* result = Socket.request dispatch_socket dispatch parse in
+    let* result = Socket.request env dispatch_socket dispatch parse in
     Logs.pp_logs env Debug "Result: %a\n%!" pp_command (command, result);
     Some result
   with _exn -> None

@@ -5,7 +5,8 @@ let daemon ~env event_socket =
   let buf = Eio.Buf_read.of_flow ~max_size:max_int event_socket in
   while true do
     let msg = Eio.Buf_read.line buf in
-    match Event.parse msg with
+    Logs.pp_logs env Debug "Received event: %S\n%!" msg;
+    match Event.parse env msg with
     | Some event ->
         Logs.pp_logs env Debug "Parsed event: %a\n%!" Event.pp event;
         Handler.on_event env event

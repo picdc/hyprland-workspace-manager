@@ -21,7 +21,7 @@ type t = { event : event; data : string }
 let pp ppf { event; data } =
   Format.fprintf ppf "{ event: %s; data: %s }" (to_string event) data
 
-let parse event_line =
+let parse env event_line =
   let re = Re.Pcre.re "^(\\w+)>>(.+)$" |> Re.compile in
   match Re.all re event_line with
   | [ matched ] ->
@@ -29,5 +29,5 @@ let parse event_line =
       let data = Re.Group.get matched 2 in
       Some { event; data }
   | _ ->
-      Eio.traceln "Unknown event: %s" event_line;
+      Logs.pp_logs env Debug "Unknown event: %s" event_line;
       None
