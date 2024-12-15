@@ -1,12 +1,14 @@
 open Cmdliner
 
 let daemon ~env event_socket =
-  Eio.traceln "Start daemon";
+  Logs.pp_logs env Notice "Start daemon\n%!";
   let buf = Eio.Buf_read.of_flow ~max_size:max_int event_socket in
   while true do
     let msg = Eio.Buf_read.line buf in
     match Event.parse msg with
-    | Some event -> Handler.on_event env event
+    | Some event ->
+        Logs.pp_logs env Debug "Parsed event: %a\n%!" Event.pp event;
+        Handler.on_event env event
     | None -> ()
   done
 

@@ -20,6 +20,9 @@ let to_string = function
 
 type t = { event : event; data : string }
 
+let pp ppf { event; data } =
+  Format.fprintf ppf "{ event: %s; data: %s }" (to_string event) data
+
 let parse event_line =
   let re = Re.Pcre.re "^(\\w+)>>(.+)$" |> Re.compile in
   match Re.all re event_line with
