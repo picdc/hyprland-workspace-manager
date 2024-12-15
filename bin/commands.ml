@@ -29,9 +29,8 @@ let prepare_command : type res. res command -> string * (string -> res option) =
         fun r -> Some (r = "ok") )
 
 let send_command_raw :
-    type cmd_res.
-    sw:_ -> env:_ -> command:cmd_res command -> _ -> cmd_res option =
- fun ~sw:_ ~env:_ ~command dispatch_socket ->
+    type cmd_res. env:Env.t -> command:cmd_res command -> _ -> cmd_res option =
+ fun ~env:_ ~command dispatch_socket ->
   let open Option_syntax in
   let dispatch, parse = prepare_command command in
   try
@@ -39,7 +38,7 @@ let send_command_raw :
     Some result
   with _exn -> None
 
-let send_command :
-    type cmd_res. sw:_ -> env:_ -> cmd_res command -> cmd_res option =
- fun ~sw ~env command ->
-  Socket.with_connection ~sw ~env socket_name (send_command_raw ~command)
+let send_command : type cmd_res. env:Env.t -> cmd_res command -> cmd_res option
+    =
+ fun ~env command ->
+  Socket.with_connection ~env socket_name (send_command_raw ~command)

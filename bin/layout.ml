@@ -126,9 +126,8 @@ let read_monitor stdout stdin kind monitors =
         | Some m -> Some m)
 
 let interactive_select_monitors monitors ~env =
-  let stdout = Eio.Stdenv.stdout env in
-  let stdin = Eio.Stdenv.stdin env in
-  Eio_format.printf stdout "Monitors: %a\n" Monitor.pp_list monitors;
+  let stdout = Eio.Stdenv.stdout env.Env.env in
+  let stdin = Eio.Stdenv.stdin env.env in
   let primary =
     match read_monitor stdout stdin Primary monitors with
     | None -> assert false
@@ -188,7 +187,7 @@ let to_conf_line workspace =
     workspace.monitor.desc
 
 let to_conf_file ~env assignments =
-  let path = Resources.Env.workspaces_configuration env in
+  let path = Resources.Unix_env.workspaces_configuration env.Env.env in
   Eio.Path.with_open_out ~append:false ~create:(`Or_truncate 0o644) path
     (fun file ->
       List.iter

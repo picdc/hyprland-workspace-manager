@@ -1,14 +1,15 @@
-let dispatch_workspaces ~sw ~env ~interactive ~overwrite () =
+let dispatch_workspaces ~env ~interactive ~overwrite () =
   let open Utils.Option_syntax in
   let monitors, workspaces =
     Eio.Fiber.pair
-      (fun () -> Commands.send_command ~sw ~env Commands.Monitors)
-      (fun () -> Commands.send_command ~sw ~env Commands.Workspaces)
+      (fun () -> Commands.send_command ~env Commands.Monitors)
+      (fun () -> Commands.send_command ~env Commands.Workspaces)
   in
   let* monitors = monitors in
   let* workspaces = workspaces in
   let configuration =
-    Layout.Configuration.read_or_default (Resources.Env.configuration env)
+    Layout.Configuration.read_or_default
+      (Resources.Unix_env.configuration env.env)
   in
   let workspaces =
     Layout.assign ~env ~interactive monitors workspaces configuration
@@ -19,7 +20,7 @@ let dispatch_workspaces ~sw ~env ~interactive ~overwrite () =
         if assignment.Layout.active then
           Some
             (fun () ->
-              Commands.send_command ~sw ~env
+              Commands.send_command ~env
                 (Commands.MoveWorkspaceToMonitor
                    { workspace = assignment.id; monitor = assignment.monitor })
               |> ignore)
@@ -30,11 +31,11 @@ let dispatch_workspaces ~sw ~env ~interactive ~overwrite () =
   let () = Eio.Fiber.all commands in
   Some ()
 
-let on_monitor_change sw env =
-  dispatch_workspaces ~sw ~env ~interactive:false ~overwrite:true ()
+let on_monitor_change env =
+  dispatch_workspaces ~env ~interactive:false ~overwrite:true ()
 
-let on_event sw env ev =
+let on_event env ev =
   match ev.Event.event with
   | Event.MonitorAdded | MonitorAddedV2 | MonitorRemoved ->
-      on_monitor_change sw env |> ignore
+      on_monitor_change env |> ignore
   | _ -> ()

@@ -37,7 +37,7 @@ module Workspace = struct
     | _ -> None
 end
 
-module Env = struct
+module Unix_env = struct
   let xdg_runtime_dir () = Sys.getenv "XDG_RUNTIME_DIR"
   let hyprland_instance_signature () = Sys.getenv "HYPRLAND_INSTANCE_SIGNATURE"
   let home () = Sys.getenv "HOME"

@@ -1,12 +1,12 @@
 open Cmdliner
 
-let daemon ~sw ~env event_socket =
+let daemon ~env event_socket =
   Eio.traceln "Start daemon";
   let buf = Eio.Buf_read.of_flow ~max_size:max_int event_socket in
   while true do
     let msg = Eio.Buf_read.line buf in
     match Event.parse msg with
-    | Some event -> Handler.on_event sw env event
+    | Some event -> Handler.on_event env event
     | None -> ()
   done
 
@@ -33,11 +33,22 @@ module CmdMaker (Command : CMD_DESC) = struct
 end
 
 module Daemon = CmdMaker (struct
-  type options = unit
+  type options = { verbosity : Env.verbosity }
 
-  let options = Term.const ()
+  let verbosity_flag =
+    Arg.(value & opt int Env.default_verbosity_int & info [ "v"; "verbosity" ])
 
-  let handler ~sw ~env () () =
+  let options =
+    let open Term.Syntax in
+    let+ verbosity = verbosity_flag in
+    {
+      verbosity =
+        Option.value ~default:Env.default_verbosity
+          (Env.verbosity_of_int verbosity);
+    }
+
+  let handler ~sw ~env { verbosity } () =
+    let env = Env.{ env; verbosity; switch = sw } in
     Socket.with_connection ~sw ~env Event.socket_name daemon
 
   let name = "daemon"
@@ -69,8 +80,9 @@ module Dispatch = CmdMaker (struct
           (Env.verbosity_of_int verbosity);
     }
 
-  let handler ~sw ~env options () =
-    Handler.dispatch_workspaces ~sw ~env ~interactive:options.interactive
+  let handler ~sw ~env (options : options) () =
+    let env = Env.{ env; verbosity = options.verbosity; switch = sw } in
+    Handler.dispatch_workspaces ~env ~interactive:options.interactive
       ~overwrite:options.overwrite ()
     |> ignore
 

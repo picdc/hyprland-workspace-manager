@@ -1,15 +1,15 @@
 let make socket_name =
   let ( // ) = Filename.concat in
   `Unix
-    (Resources.Env.xdg_runtime_dir ()
+    (Resources.Unix_env.xdg_runtime_dir ()
     // "hypr"
-    // Resources.Env.hyprland_instance_signature ()
+    // Resources.Unix_env.hyprland_instance_signature ()
     // socket_name)
 
-let with_connection ~sw ~env socket_name k =
+let with_connection ~env socket_name k =
   let sockaddr = make socket_name in
-  let socket = Eio.Net.connect ~sw env#net sockaddr in
-  let res = k ~sw ~env socket in
+  let socket = Eio.Net.connect ~sw:env.Env.switch env.env#net sockaddr in
+  let res = k ~env socket in
   Eio.Net.close socket;
   res
 
