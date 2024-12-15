@@ -131,6 +131,7 @@ let read_monitor stdout stdin kind monitors =
 let interactive_select_monitors monitors ~env =
   let stdout = Eio.Stdenv.stdout env.Env.env in
   let stdin = Eio.Stdenv.stdin env.env in
+  Eio_format.printf stdout "Available monitors: %a\n%!" Monitor.pp_list monitors;
   let primary =
     match read_monitor stdout stdin Primary monitors with
     | None -> assert false
