@@ -99,6 +99,15 @@ module Configuration = struct
 
   let default =
     { primary_monitors = []; secondary_monitors = []; layout = default_layout }
+
+  let read_or_default path =
+    let result =
+      try
+        let file = Eio.Path.with_open_in path Eio.Flow.read_all in
+        Ezjsonm.from_string file |> decode
+      with _ -> None
+    in
+    Option.value ~default result
 end
 
 let read_monitor stdout stdin kind monitors =
