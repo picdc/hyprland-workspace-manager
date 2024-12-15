@@ -188,10 +188,7 @@ let to_conf_line workspace =
     workspace.monitor.desc
 
 let to_conf_file ~env assignments =
-  let home = Sys.getenv "HOME" in
-  let path =
-    Eio.Path.(env#fs / home / ".config" / "hypr" / "workspace_manager.conf")
-  in
+  let path = Resources.Env.workspaces_configuration env in
   Eio.Path.with_open_out ~append:false ~create:(`Or_truncate 0o644) path
     (fun file ->
       List.iter

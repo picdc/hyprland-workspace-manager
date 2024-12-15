@@ -36,3 +36,17 @@ module Workspace = struct
     | `A workspace -> Some (List.filter_map parse workspace)
     | _ -> None
 end
+
+module Env = struct
+  let xdg_runtime_dir () = Sys.getenv "XDG_RUNTIME_DIR"
+  let hyprland_instance_signature () = Sys.getenv "HYPRLAND_INSTANCE_SIGNATURE"
+  let home () = Sys.getenv "HOME"
+
+  let configuration env =
+    Eio.Path.(
+      env#fs / home () / ".config" / "hyprland-workspace-manager"
+      / "config.json")
+
+  let workspaces_configuration env =
+    Eio.Path.(env#fs / home () / ".config" / "hypr" / "workspace_manager.conf")
+end
