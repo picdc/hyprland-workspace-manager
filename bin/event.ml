@@ -1,5 +1,3 @@
-let socket_name = ".socket2.sock"
-
 type event =
   | MonitorAdded
   | MonitorAddedV2

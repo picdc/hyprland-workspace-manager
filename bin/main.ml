@@ -51,7 +51,8 @@ module Daemon = CmdMaker (struct
 
   let handler ~sw ~env { verbosity } () =
     let env = Env.{ env; verbosity; switch = sw } in
-    Socket.with_connection ~sw ~env Event.socket_name daemon
+    Socket.with_connection ~sw ~env Resources.Unix_env.hyprland_event_socket
+      daemon
 
   let name = "daemon"
 end)

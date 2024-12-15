@@ -1,8 +1,6 @@
 open Utils
 open Resources
 
-let socket_name = ".socket.sock"
-
 type move_workspace = { workspace : Workspace.t; monitor : Monitor.t }
 
 type _ command =
@@ -43,4 +41,5 @@ let send_command_raw :
 let send_command : type cmd_res. env:Env.t -> cmd_res command -> cmd_res option
     =
  fun ~env command ->
-  Socket.with_connection ~env socket_name (send_command_raw ~command)
+  Socket.with_connection ~env Unix_env.hyprland_dispatch_socket
+    (send_command_raw ~command)

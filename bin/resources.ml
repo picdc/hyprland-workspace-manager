@@ -49,4 +49,16 @@ module Unix_env = struct
 
   let workspaces_configuration env =
     Eio.Path.(env#fs / home () / ".config" / "hypr" / "workspace_manager.conf")
+
+  let hyprland_socket socket_name =
+    let ( // ) = Filename.concat in
+    `Unix
+      (xdg_runtime_dir () // "hypr"
+      // hyprland_instance_signature ()
+      // socket_name)
+
+  let hyprland_dispatch_socket_name = ".socket.sock"
+  let hyprland_dispatch_socket = hyprland_socket hyprland_dispatch_socket_name
+  let hyprland_event_socket_name = ".socket2.sock"
+  let hyprland_event_socket = hyprland_socket hyprland_event_socket_name
 end
