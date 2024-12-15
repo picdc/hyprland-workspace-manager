@@ -1,5 +1,10 @@
 type verbosity = Error | Notice | Debug
-type t = { env : Eio_unix.Stdenv.base; verbosity : verbosity }
+
+type t = {
+  env : Eio_unix.Stdenv.base;
+  verbosity : verbosity;
+  switch : Eio.Switch.t;
+}
 
 let verbosity_of_int = function
   | 0 -> Some Error
