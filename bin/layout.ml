@@ -100,7 +100,7 @@ module Configuration = struct
     | Json.Parsing err -> Json.pp_error ppf err
     | Invalid_monitor_kind (path, kind) ->
         Format.fprintf ppf "Monitor kind at path `%a` is invalid (%s)"
-          Json.pp_path path kind
+          Json.pp_full_path path kind
     | exn -> Format.fprintf ppf "%s" (Printexc.to_string exn)
 
   let read_or_default env path =

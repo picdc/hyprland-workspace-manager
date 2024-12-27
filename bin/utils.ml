@@ -3,7 +3,7 @@ module Option_syntax = struct
 end
 
 module Json = struct
-  type path = string list
+  type path = [ `Index of int | `Field of string ] list
 
   (* Paths are used to give an approximate location of the error, they are not
      precise under arrays *)
@@ -17,7 +17,8 @@ module Json = struct
 
   let parse_array ?(field_loc = [])
       (parse : ?field_loc:path -> Ezjsonm.value -> 'a) = function
-    | `A array -> List.map (parse ~field_loc) array
+    | `A array ->
+        List.mapi (fun i -> parse ~field_loc:(field_loc @ [ `Index i ])) array
     | _ -> raise (Parsing (Not_an_array field_loc))
 
   let get_int ?(field_loc = []) = function
@@ -37,27 +38,34 @@ module Json = struct
 
   let get_field ?(field_loc = []) json path
       (transform : ?field_loc:path -> Ezjsonm.value -> 'a) =
-    let full_field_loc = field_loc @ path in
+    let full_field_loc = field_loc @ List.map (fun p -> `Field p) path in
     match Ezjsonm.find_opt json path with
     | Some value -> transform ~field_loc:full_field_loc value
     | None -> raise (Parsing (Cannot_find_field full_field_loc))
 
   let pp_path ppf = function
+    | `Index i -> Format.fprintf ppf "[%d]" i
+    | `Field f -> Format.pp_print_string ppf f
+
+  let pp_full_path ppf = function
     | [] -> Format.fprintf ppf "%%root%%"
     | path ->
         Format.pp_print_list
           ~pp_sep:(fun ppf () -> Format.fprintf ppf ".")
-          Format.pp_print_string ppf path
+          pp_path ppf path
 
   let pp_error ppf = function
     | Cannot_find_field path ->
-        Format.fprintf ppf "Field at path `%a` not found" pp_path path
+        Format.fprintf ppf "Field at path `%a` not found" pp_full_path path
     | Not_an_array path ->
-        Format.fprintf ppf "Path `%a` is expected to be an array" pp_path path
+        Format.fprintf ppf "Path `%a` is expected to be an array" pp_full_path
+          path
     | Not_an_integer path ->
-        Format.fprintf ppf "Path `%a` is expected to be an integer" pp_path path
+        Format.fprintf ppf "Path `%a` is expected to be an integer" pp_full_path
+          path
     | Not_a_string path ->
-        Format.fprintf ppf "Path `%a` is expected to be a string" pp_path path
+        Format.fprintf ppf "Path `%a` is expected to be a string" pp_full_path
+          path
 end
 
 module Eio_format = struct
