@@ -27,11 +27,21 @@ module Json = struct
         with _ -> raise (Parsing (Not_an_integer field_loc)))
     | _ -> raise (Parsing (Not_an_integer field_loc))
 
+  let map_int ?field_loc v ~(map : ?field_loc:path -> int -> 'a) =
+    get_int ?field_loc v |> map ?field_loc
+
   let get_ints ?(field_loc = []) = parse_array ~field_loc get_int
+  let map_ints ?(field_loc = []) ~map = parse_array ~field_loc (map_int ~map)
 
   let get_string ?(field_loc = []) : Ezjsonm.value -> 'a = function
     | `String s -> s
     | _ -> raise (Parsing (Not_a_string field_loc))
+
+  let map_string ?field_loc v ~(map : ?field_loc:path -> string -> 'a) =
+    get_string ?field_loc v |> map ?field_loc
+
+  let map_strings ?(field_loc = []) ~map =
+    parse_array ~field_loc (map_string ~map)
 
   let get_strings ?(field_loc = []) = parse_array ~field_loc get_string
   let get_list ?(field_loc = []) get = parse_array ~field_loc get

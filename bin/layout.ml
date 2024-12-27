@@ -34,14 +34,15 @@ module Configuration = struct
       ]
 
   let decode_assignment ?field_loc json =
-    let monitor_json =
-      Json.get_field ?field_loc json [ "monitor" ] Json.get_string
+    let monitor =
+      Json.get_field ?field_loc json [ "monitor" ]
+      @@ Json.map_string ~map:monitor_kind_of_string
     in
-    let monitor = monitor_kind_of_string ?field_loc monitor_json in
     let workspaces =
-      Json.get_field ?field_loc json [ "workspaces" ] Json.get_ints
+      Json.get_field ?field_loc json [ "workspaces" ]
+      @@ Json.map_ints ~map:(fun ?field_loc:_ i -> Workspace.Wksp i)
     in
-    (monitor, List.map (fun i -> Workspace.Wksp i) workspaces)
+    (monitor, workspaces)
 
   type layout = assignment list
 
