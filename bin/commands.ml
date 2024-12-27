@@ -16,7 +16,7 @@ let pp_command : type t. _ -> t command * t -> unit =
       Format.fprintf ppf "Move %a to %a: %b" Workspace.pp workspace Monitor.pp
         monitor b
 
-let as_json k v = k (Ezjsonm.from_string v)
+let as_json k v = try Some (k (Ezjsonm.from_string v)) with _ -> None
 
 let prepare_command : type res. res command -> string * (string -> res option) =
   function

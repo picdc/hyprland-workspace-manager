@@ -9,16 +9,15 @@ module Monitor = struct
 
   let pp_list = Format.pp_print_list ~pp_sep:Format.pp_print_space pp
 
-  let parse json =
-    let open Option_syntax in
-    let* id = Json.get_field json [ "id" ] Ezjsonm.get_int in
-    let* name = Json.get_field json [ "name" ] Ezjsonm.get_string in
-    let* desc = Json.get_field json [ "description" ] Ezjsonm.get_string in
-    Some { id; name; desc }
+  let parse ?field_loc json =
+    let id = Json.get_field ?field_loc json [ "id" ] Json.get_int in
+    let name = Json.get_field ?field_loc json [ "name" ] Json.get_string in
+    let desc =
+      Json.get_field ?field_loc json [ "description" ] Json.get_string
+    in
+    { id; name; desc }
 
-  let parse_array = function
-    | `A monitors -> Some (List.filter_map parse monitors)
-    | _ -> None
+  let parse_array ?field_loc = Json.parse_array ?field_loc parse
 end
 
 module Workspace = struct
@@ -27,14 +26,11 @@ module Workspace = struct
   let pp ppf (Wksp id) = Format.pp_print_int ppf id
   let pp_list = Format.pp_print_list ~pp_sep:Format.pp_print_space pp
 
-  let parse json =
-    let open Option_syntax in
-    let* id = Json.get_field json [ "id" ] Ezjsonm.get_int in
-    Some (Wksp id)
+  let parse ?field_loc json =
+    let id = Json.get_field ?field_loc json [ "id" ] Json.get_int in
+    Wksp id
 
-  let parse_array = function
-    | `A workspace -> Some (List.filter_map parse workspace)
-    | _ -> None
+  let parse_array ?field_loc = Json.parse_array ?field_loc parse
 end
 
 module Unix_env = struct

@@ -4,6 +4,8 @@ open Resources
 type workspace = { id : Workspace.t; monitor : Monitor.t; active : bool }
 type monitor_kind = Primary | Secondary
 
+exception Invalid_monitor_kind of Json.path
+
 let monitor_kind_to_string = function
   | Primary -> "primary"
   | Secondary -> "secondary"
@@ -11,10 +13,10 @@ let monitor_kind_to_string = function
 let pp_monitor_kind ppf kind =
   Format.fprintf ppf "%s" @@ monitor_kind_to_string kind
 
-let monitor_kind_of_string = function
-  | "primary" -> Some Primary
-  | "secondary" -> Some Secondary
-  | _ -> None
+let monitor_kind_of_string ?(field_loc = []) = function
+  | "primary" -> Primary
+  | "secondary" -> Secondary
+  | _ -> raise (Invalid_monitor_kind field_loc)
 
 (* TODO: handle the errors, for now this is... unsatisfying. *)
 module Configuration = struct
@@ -31,28 +33,22 @@ module Configuration = struct
                workpaces) );
       ]
 
-  let decode_assignment json =
-    let open Option_syntax in
-    let* monitor_json = Json.get_field json [ "monitor" ] Ezjsonm.get_string in
-    let* monitor = monitor_kind_of_string monitor_json in
-    let* workspaces =
-      Json.get_field json [ "workspaces" ] Ezjsonm.(get_list get_int)
+  let decode_assignment ?field_loc json =
+    let monitor_json =
+      Json.get_field ?field_loc json [ "monitor" ] Json.get_string
     in
-    Some (monitor, List.map (fun i -> Workspace.Wksp i) workspaces)
+    let monitor = monitor_kind_of_string ?field_loc monitor_json in
+    let workspaces =
+      Json.get_field ?field_loc json [ "workspaces" ] Json.get_ints
+    in
+    (monitor, List.map (fun i -> Workspace.Wksp i) workspaces)
 
   type layout = assignment list
 
   let encode_layout l = `A (List.map encode_assigment l)
 
-  let decode_layout json =
-    let open Option_syntax in
-    List.fold_left
-      (fun assignments assignment ->
-        let* assignment = assignment in
-        let* assignments = assignments in
-        Some (assignment :: assignments))
-      (Some [])
-    @@ Ezjsonm.get_list decode_assignment json
+  let decode_layout ?field_loc json =
+    Json.get_list ?field_loc decode_assignment json
 
   let default_layout =
     [
@@ -63,7 +59,9 @@ module Configuration = struct
   type monitor_whitelist = Monitor.desc list
 
   let encode_monitor_whitelist l = Ezjsonm.strings l
-  let decode_monitor_whitelist json = Ezjsonm.get_strings json
+
+  let decode_monitor_whitelist ?field_loc json =
+    Json.get_strings ?field_loc json
 
   type t = {
     primary_monitors : monitor_whitelist;
@@ -82,20 +80,18 @@ module Configuration = struct
       ]
 
   let decode json =
-    let open Option_syntax in
-    let* primary_monitors =
+    let primary_monitors =
       Json.get_field json
         [ monitor_kind_to_string Primary ]
         decode_monitor_whitelist
     in
-    let* secondary_monitors =
+    let secondary_monitors =
       Json.get_field json
         [ monitor_kind_to_string Secondary ]
         decode_monitor_whitelist
     in
-    let* layout = Json.get_field json [ "layout" ] decode_layout in
-    let* layout = layout in
-    Some { primary_monitors; secondary_monitors; layout }
+    let layout = Json.get_field json [ "layout" ] decode_layout in
+    { primary_monitors; secondary_monitors; layout }
 
   let default =
     { primary_monitors = []; secondary_monitors = []; layout = default_layout }
@@ -104,7 +100,7 @@ module Configuration = struct
     let result =
       try
         let file = Eio.Path.with_open_in path Eio.Flow.read_all in
-        Ezjsonm.from_string file |> decode
+        Some (Ezjsonm.from_string file |> decode)
       with _ ->
         Logs.pp_logs env Error "Couldn't read layout file at %a\n%!" Eio.Path.pp
           path;
