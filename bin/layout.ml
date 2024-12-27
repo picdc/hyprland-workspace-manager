@@ -4,7 +4,7 @@ open Resources
 type workspace = { id : Workspace.t; monitor : Monitor.t; active : bool }
 type monitor_kind = Primary | Secondary
 
-exception Invalid_monitor_kind of Json.path
+exception Invalid_monitor_kind of Json.path * string
 
 let monitor_kind_to_string = function
   | Primary -> "primary"
@@ -16,7 +16,7 @@ let pp_monitor_kind ppf kind =
 let monitor_kind_of_string ?(field_loc = []) = function
   | "primary" -> Primary
   | "secondary" -> Secondary
-  | _ -> raise (Invalid_monitor_kind field_loc)
+  | kind -> raise (Invalid_monitor_kind (field_loc, kind))
 
 (* TODO: handle the errors, for now this is... unsatisfying. *)
 module Configuration = struct
@@ -96,14 +96,22 @@ module Configuration = struct
   let default =
     { primary_monitors = []; secondary_monitors = []; layout = default_layout }
 
+  let pp_exn ppf = function
+    | Json.Parsing err -> Json.pp_error ppf err
+    | Invalid_monitor_kind (path, kind) ->
+        Format.fprintf ppf "Monitor kind at path `%a` is invalid (%s)"
+          Json.pp_path path kind
+    | exn -> Format.fprintf ppf "%s" (Printexc.to_string exn)
+
   let read_or_default env path =
     let result =
       try
         let file = Eio.Path.with_open_in path Eio.Flow.read_all in
         Some (Ezjsonm.from_string file |> decode)
-      with _ ->
-        Logs.pp_logs env Error "Couldn't read layout file at %a\n%!" Eio.Path.pp
-          path;
+      with exn ->
+        Logs.pp_logs env Error
+          "Couldn't read layout file at %a\n%a\nUsing default layout.\n%!"
+          Eio.Path.pp path pp_exn exn;
         None
     in
     Option.value ~default result

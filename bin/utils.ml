@@ -41,6 +41,23 @@ module Json = struct
     match Ezjsonm.find_opt json path with
     | Some value -> transform ~field_loc:full_field_loc value
     | None -> raise (Parsing (Cannot_find_field full_field_loc))
+
+  let pp_path ppf = function
+    | [] -> Format.fprintf ppf "%%root%%"
+    | path ->
+        Format.pp_print_list
+          ~pp_sep:(fun ppf () -> Format.fprintf ppf ".")
+          Format.pp_print_string ppf path
+
+  let pp_error ppf = function
+    | Cannot_find_field path ->
+        Format.fprintf ppf "Field at path `%a` not found" pp_path path
+    | Not_an_array path ->
+        Format.fprintf ppf "Path `%a` is expected to be an array" pp_path path
+    | Not_an_integer path ->
+        Format.fprintf ppf "Path `%a` is expected to be an integer" pp_path path
+    | Not_a_string path ->
+        Format.fprintf ppf "Path `%a` is expected to be a string" pp_path path
 end
 
 module Eio_format = struct
