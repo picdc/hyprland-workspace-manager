@@ -107,6 +107,8 @@ module Configuration = struct
   let read_or_default env path =
     let result =
       try
+        Logs.pp_logs env Debug "Reading layout configuration at %a.\n%!"
+          Eio.Path.pp path;
         let file = Eio.Path.with_open_in path Eio.Flow.read_all in
         Some (Ezjsonm.from_string file |> decode)
       with exn ->

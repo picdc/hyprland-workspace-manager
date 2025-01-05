@@ -34,17 +34,22 @@ module Workspace = struct
 end
 
 module Unix_env = struct
+  let ( // ) = Filename.concat
   let xdg_runtime_dir () = Sys.getenv "XDG_RUNTIME_DIR"
   let hyprland_instance_signature () = Sys.getenv "HYPRLAND_INSTANCE_SIGNATURE"
   let home () = Sys.getenv "HOME"
 
+  let xdg_config_home () =
+    match Sys.getenv_opt "XDG_CONFIG_HOME" with
+    | Some s -> s
+    | None -> home () // ".config"
+
   let configuration env =
     Eio.Path.(
-      env#fs / home () / ".config" / "hyprland-workspace-manager"
-      / "config.json")
+      env#fs / xdg_config_home () / "hyprland-workspace-manager" / "config.json")
 
   let workspaces_configuration env =
-    Eio.Path.(env#fs / home () / ".config" / "hypr" / "workspace_manager.conf")
+    Eio.Path.(env#fs / xdg_config_home () / "hypr" / "workspace_manager.conf")
 
   let hyprland_socket socket_name =
     let ( // ) = Filename.concat in
