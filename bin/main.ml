@@ -96,7 +96,13 @@ end)
 let commands : (module CMD) list = [ (module Daemon); (module Dispatch) ]
 
 let commands ~sw ~env =
-  Cmdliner.Cmd.group (Cmd.info "")
+  let git_commit =
+    Eio.Process.parse_out
+      (Eio.Stdenv.process_mgr env)
+      Eio.Buf_read.line
+      [ "git"; "show"; "--oneline"; "-s" ]
+  in
+  Cmdliner.Cmd.group (Cmd.info "" ~version:git_commit)
   @@ List.map (fun (module CMD : CMD) -> CMD.cmd ~sw ~env) commands
 
 let () =
