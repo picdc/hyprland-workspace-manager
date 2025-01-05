@@ -1,5 +1,5 @@
 (executable
- (public_name hyprland_monitor_conf)
+ (public_name hyprland-workspace-manager)
  (name main)
  (libraries eio eio_main eio.unix re ezjsonm cmdliner)
 )
